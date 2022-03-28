@@ -97,12 +97,35 @@
   :ensure t)
 
 ;;; Rust
-(use-package rustic
+(use-package rust-mode
   :ensure t
-  :bind (("<f6>" . rustic-format-buffer))
+  :hook ((rust-mode . flycheck-mode)
+	 (rust-mode . lsp-deferred))
+  :bind (("<f6>" . my/rust-format-buffer))
   :config
+  (require 'rust-rustfmt)
+  (defun my/rust-format-buffer ()
+    (interactive)
+    (rust-format-buffer)
+    (save-buffer))
   (require 'lsp-rust)
-  (setq lsp-rust-analyzer-completion-add-call-parenthesis nil))
+  (setq lsp-rust-analyzer-completion-add-call-parenthesis nil
+	lsp-rust-analyzer-proc-macro-enable t)
+  (cl-defmethod lsp-clients-extract-signature-on-hover
+    (contents (_server-id (eql rust-analyzer)))
+    "from https://github.com/emacs-lsp/lsp-mode/pull/1740 to extract
+signature in rust"
+    (-let* (((&hash "value") contents)
+	    (groups (--partition-by (s-blank? it) (s-lines (s-trim value))))
+	    (sig_group (if (s-equals? "```rust" (car (-third-item groups)))
+			   (-third-item groups)
+			 (car groups)))
+	    (sig (--> sig_group
+		      (--drop-while (s-equals? "```rust" it) it)
+		      (--take-while (not (s-equals? "```" it)) it)
+		      (--map (s-trim it) it)
+		      (s-join " " it))))
+	   (lsp--render-element (concat "```rust\n" sig "\n```")))))
 
 ;;; Go
 (use-package go-mode
