@@ -1,2 +1,2 @@
 alias vi=vim
-[\u@\h \W]\$
+export PS1='[\u@\h \w]\$ '
